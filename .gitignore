@@ -1,0 +1,45 @@
+# Local portable toolchains
+.tools/
+
+# Unity generated and local-only files
+Library/
+Temp/
+Logs/
+Obj/
+UserSettings/
+Builds/
+*.csproj
+*.sln
+
+# Go runtime data and binaries
+backend/data/*
+!backend/data/.gitkeep
+*.db
+*.db-wal
+*.db-shm
+backend/bin/
+
+# Frontend dependencies and build/test output
+web/node_modules/
+web/dist/
+web/coverage/
+web/test-results/
+web/playwright-report/
+
+# Python caches from local documentation tooling
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local environment and editor files
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+*.user
+*.suo
+
+# OS files
+.DS_Store
+Thumbs.db
