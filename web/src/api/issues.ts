@@ -14,6 +14,8 @@ export interface Issue {
   description: string
   priority: IssuePriority
   status: IssueStatus
+  deviceCode: string
+  zone: string
   position: Position
   createdAt: string
   updatedAt: string
@@ -62,6 +64,14 @@ export async function updateIssueStatus(
   )
 }
 
+export async function deleteIssue(id: string, signal?: AbortSignal): Promise<void> {
+  await request<void>(
+    `/api/issues/${encodeURIComponent(id)}`,
+    { method: 'DELETE' },
+    signal,
+  )
+}
+
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     return error.message
@@ -101,6 +111,9 @@ async function request<T>(
       throw new ApiError(message, response.status)
     }
 
+    if (response.status === 204) {
+      return undefined as T
+    }
     return (await response.json()) as T
   } catch (error) {
     if (error instanceof ApiError) {

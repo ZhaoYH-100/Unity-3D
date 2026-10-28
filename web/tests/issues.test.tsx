@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -13,6 +13,8 @@ const issue: Issue = {
   description: '机柜右侧温度明显偏高',
   priority: 'high',
   status: 'open',
+  deviceCode: 'CAB-A',
+  zone: '配电区',
   position: { x: 1.25, y: 0.8, z: 2.4 },
   createdAt: '2026-10-27T11:30:00.000000000Z',
   updatedAt: '2026-10-27T11:30:00.000000000Z',
@@ -37,7 +39,22 @@ describe('inspection issue dashboard', () => {
     expect(await screen.findByText(issue.title)).toBeInTheDocument()
     expect(screen.getByText('高')).toBeInTheDocument()
     expect(screen.getByLabelText(`修改 ${issue.title} 的状态`)).toHaveValue('open')
-    expect(screen.getByText(issue.description)).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('场景坐标 X 1.25，Y 0.80，Z 2.40'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('显示 1 / 共 1 条')).toBeInTheDocument()
+    expect(screen.getByText('CAB-A', { selector: '.device-code' })).toBeInTheDocument()
+    expect(
+      screen.getByText('配电区', { selector: '.location-cell span' }),
+    ).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: issue.title }))
+    const dialog = screen.getByRole('dialog', {
+      name: /1 号机柜温度异常/,
+    })
+    expect(dialog).toBeInTheDocument()
+    expect(within(dialog).getByText(issue.description)).toBeInTheDocument()
+    expect(within(dialog).getByText('现场区域')).toBeInTheDocument()
   })
 
   it('renders an empty state when the API has no issues', async () => {
@@ -91,7 +108,7 @@ describe('inspection issue dashboard', () => {
     await user.selectOptions(select, 'in_progress')
 
     await waitFor(() => expect(select).toHaveValue('in_progress'))
-    expect(screen.getByText('处理中', { selector: '.status-label' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
   })
 
   it('retains the original status when update fails', async () => {
@@ -115,5 +132,83 @@ describe('inspection issue dashboard', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('状态更新失败')
     await waitFor(() => expect(select).toHaveValue('open'))
+  })
+
+  it('filters by device and opens a complete detail view', async () => {
+    const secondIssue: Issue = {
+      ...issue,
+      id: '5aa670db-c30d-4cab-8668-c02700992222',
+      title: '设备箱封条破损',
+      priority: 'medium',
+      deviceCode: 'BOX-01',
+      zone: '暂存区',
+    }
+    server.use(
+      http.get(`${apiBase}/api/issues`, () =>
+        HttpResponse.json({ items: [issue, secondIssue] }),
+      ),
+    )
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(await screen.findByText(issue.title)).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('设备'), 'BOX-01')
+
+    expect(screen.getByText(secondIssue.title)).toBeInTheDocument()
+    expect(screen.queryByText(issue.title)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: secondIssue.title }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('设备箱封条破损')
+    expect(screen.getByRole('dialog')).toHaveTextContent('BOX-01')
+    expect(screen.getByRole('dialog')).toHaveTextContent('暂存区')
+  })
+
+  it('deletes an issue only after confirmation', async () => {
+    server.use(
+      http.get(`${apiBase}/api/issues`, () =>
+        HttpResponse.json({ items: [issue] }),
+      ),
+      http.delete(`${apiBase}/api/issues/:id`, () =>
+        new HttpResponse(null, { status: 204 }),
+      ),
+    )
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: issue.title }))
+    await user.click(screen.getByRole('button', { name: '删除问题' }))
+    expect(screen.getByText(/删除后无法恢复/)).toBeInTheDocument()
+    expect(screen.queryByText('当前没有问题')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '确认删除' }))
+    expect(await screen.findByText('当前没有问题')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('keeps the detail open and shows an error when deletion fails', async () => {
+    server.use(
+      http.get(`${apiBase}/api/issues`, () =>
+        HttpResponse.json({ items: [issue] }),
+      ),
+      http.delete(`${apiBase}/api/issues/:id`, () =>
+        HttpResponse.json(
+          { error: { code: 'INTERNAL', message: 'delete failed' } },
+          { status: 503 },
+        ),
+      ),
+    )
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: issue.title }))
+    await user.click(screen.getByRole('button', { name: '删除问题' }))
+    await user.click(screen.getByRole('button', { name: '确认删除' }))
+
+    const dialog = screen.getByRole('dialog')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('删除失败')
+    expect(within(dialog).getByText(issue.title)).toBeInTheDocument()
   })
 })

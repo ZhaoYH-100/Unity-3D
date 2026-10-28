@@ -20,6 +20,7 @@ func New(service *issue.Service, allowedOrigins []string, logger *slog.Logger) h
 	mux.HandleFunc("GET /api/issues", api.listIssues)
 	mux.HandleFunc("POST /api/issues", api.createIssue)
 	mux.HandleFunc("PATCH /api/issues/{id}/status", api.updateIssueStatus)
+	mux.HandleFunc("DELETE /api/issues/{id}", api.deleteIssue)
 
 	handler := api.withCORS(allowedOrigins, mux)
 	handler = api.logRequests(handler)

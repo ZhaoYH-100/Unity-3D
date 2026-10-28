@@ -1,9 +1,9 @@
 # Unity 3D 虚拟现场巡检
 
-本仓库实现“无 AR 设备备选版”巡检题的非 Unity 部分：Go 后端、SQLite
-持久化、React 管理端、自动化测试和工程文档。
+本仓库实现“无 AR 设备备选版”巡检题的完整三端闭环：Unity 3D 虚拟现场、
+Go 后端、SQLite 持久化、React 管理端、自动化测试和工程文档。Unity
+会从后端恢复历史问题标记，React 支持筛选、详情和删除。
 
-当前请求明确暂不创建 Unity 工程，因此场景、射线放置和 Unity 表单仍待完成。
 完整实施方案见 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md)。
 
 ## 当前完成情况
@@ -11,12 +11,13 @@
 | 部分 | 状态 | 说明 |
 | --- | --- | --- |
 | 本地工具链 | 已准备 | Go 1.27.3、Node 24.22.1、npm 11.19.1，安装在忽略提交的 `.tools/` |
-| Go API | 已完成 | 健康检查、创建、列表、状态更新、严格校验、CORS、幂等键 |
-| SQLite | 已完成 | WAL、busy timeout、单连接事务、重启持久化 |
-| React 管理端 | 已完成 | 列表、加载/空/错误状态、状态更新、超时、Error Boundary |
-| 自动化测试 | 已完成 | Go 测试、React 组件测试、真实 Chrome 端到端测试 |
-| Unity 客户端 | 未开始 | 本轮按用户要求排除 |
-| 演示视频与分享链接 | 未开始 | 需要 Unity 完成并选定发布渠道后处理 |
+| Go API | 已完成 | 健康检查、创建、列表、状态更新、删除、严格校验、CORS、幂等键 |
+| SQLite | 已完成 | WAL、busy timeout、单连接事务、旧库增量迁移、重启持久化 |
+| React 管理端 | 已完成 | 筛选、详情、删除、列表、状态更新、超时、Error Boundary |
+| 自动化测试 | 已完成 | Go、React、真实 Chrome 和 12 个 Unity PlayMode 测试 |
+| Unity 客户端 | 已完成 | 固定场景、历史标记恢复、点击详情、优先级/状态样式、设备与区域识别 |
+| Windows Player | 已完成 | 已构建并启动 `Builds/Windows/UnityInspection.exe` |
+| 演示视频与分享链接 | 未开始 | 三端已可运行，待录制视频并选定发布渠道 |
 
 ## 版本
 
@@ -31,7 +32,7 @@
 | Playwright | 1.64.1（使用本机 Chrome） |
 | SQLite driver | `modernc.org/sqlite` 1.61.0 |
 | UUID | `github.com/google/uuid` 1.6.0 |
-| Unity（已选定，安装进行中 0/3） | Unity 6.3 LTS `6000.3.27f1` |
+| Unity | `6000.0.30f1`（revision `62b05ba0686a`） |
 
 ## 本地工具链
 
@@ -47,6 +48,28 @@
 ```powershell
 . .\scripts\use-toolchain.ps1
 ```
+
+## 启动 Unity
+
+用 Unity Hub 或已安装的 Editor 打开仓库根目录：
+
+```powershell
+& 'D:\Program Files\Unity 6000.0.30f1\Editor\Unity.exe' -projectPath 'C:\Users\zyh\Documents\ChatGPT\Unity-3D'
+```
+
+打开 `Assets/Scenes/Inspection.unity` 后进入 Play Mode。操作方式：
+
+- `W/A/S/D` 移动，`Shift` 加速。
+- 按住鼠标右键拖动视角。
+- 左键点击地面、墙面、机柜或设备箱，在射线命中位置创建问题草稿。
+- 左键点击已有问题标记，查看标题、描述、状态、设备编号和区域。
+- `F5` 立即从后端同步标记；`Esc` 关闭详情或取消草稿。
+- 标记按优先级改变颜色和大小；处理中的标记会脉冲，已完成标记会弱化。
+- 场景内地面、墙体、机柜、设备箱和巡检台均带有设备编号与区域信息。
+- 表单打开后场景输入被冻结；提交失败时草稿、输入和幂等键保留，可直接重试。
+
+场景和 Prefab 可由 `Tools > Unity Inspection > Rebuild Inspection Scene`
+重新生成。
 
 ## 启动后端
 
@@ -100,6 +123,8 @@ npm run dev
   "title": "1 号机柜温度异常",
   "description": "机柜右侧温度明显偏高",
   "priority": "high",
+  "deviceCode": "CAB-A",
+  "zone": "A区 · 配电区",
   "position": {"x": 1.25, "y": 0.8, "z": 2.4}
 }
 ```
@@ -127,6 +152,11 @@ npm run dev
 
 合法状态：`open`、`in_progress`、`resolved`。
 
+### `DELETE /api/issues/{id}`
+
+删除指定问题，成功返回 `204 No Content`；不存在返回 `404 NOT_FOUND`。
+删除后 Unity 会在下一次同步时移除对应标记。
+
 统一错误响应：
 
 ```json
@@ -142,7 +172,7 @@ npm run dev
 | `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | 允许的浏览器来源 |
 | `VITE_API_BASE_URL` | `http://127.0.0.1:8080` | React API 地址 |
 
-后端只监听 `127.0.0.1`。CORS 允许 `GET`、`POST`、`PATCH`、`OPTIONS`，
+后端只监听 `127.0.0.1`。CORS 允许 `GET`、`POST`、`PATCH`、`DELETE`、`OPTIONS`，
 允许 `Content-Type` 和 `Idempotency-Key` 请求头。
 
 ## 测试
@@ -173,6 +203,24 @@ npm run test:e2e
 当前 Windows 环境下 `go test -race` 的测试进程在启动时返回
 `0xc0000139`，因此竞态检测仍属未验证项；普通并发测试已通过。
 
+Unity：
+
+```powershell
+.\scripts\test-unity.ps1
+```
+
+脚本会启动使用临时数据库的独立 Go 服务，然后执行 12 个 PlayMode 测试，
+覆盖场景结构、命中点坐标、单草稿、空标题、服务端 4xx、连接失败、
+同键重放、失败后重试、标记快照恢复、点击详情和真实 Unity → Go → 读取闭环。
+
+构建 Windows Player：
+
+```powershell
+.\scripts\build-unity.ps1
+```
+
+输出位于 `Builds/Windows/UnityInspection.exe`；`Builds/` 不进入 Git。
+
 ## AR 基础问答
 
 这是无 AR 设备备选版，以下内容来自方案说明，未进行真机验证。
@@ -197,8 +245,12 @@ npm run test:e2e
 
 ## 已知限制
 
-- Unity 6.3 LTS `6000.3.27f1` 已选定，但 Hub 最新截图显示 Editor 下载 0%、整体 0/3，默认 Editor 目录尚不存在；Unity 场景、射线放置、Unity 表单和两段演示视频尚未实现。
+- 当前 Unity 为 `6000.0.30f1`，与早期计划中曾锁定的 `6000.3.27f1` 不同；
+  本次按实际已安装且验证通过的版本交付。
+- 当前机器使用 Microsoft Basic Render Driver，日志出现 D3D11 视频解码软件回退，
+  不影响场景、UI 和提交测试；有独立显卡的环境应使用正常硬件 D3D11。
 - 当前没有最终分享链接、访问码或有效期信息。
+- 两段 3～5 分钟演示视频尚未录制。
 - `go test -race` 尚未跑通；具体原因和未验证项已在上方记录。
 - 当前 API 没有鉴权，只应在本地开发环境使用。
 

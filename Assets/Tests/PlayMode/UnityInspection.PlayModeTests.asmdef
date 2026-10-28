@@ -1,0 +1,19 @@
+{
+  "name": "UnityInspection.PlayModeTests",
+  "rootNamespace": "UnityInspection.Tests",
+  "references": [
+    "UnityInspection"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

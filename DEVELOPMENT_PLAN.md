@@ -1,14 +1,16 @@
 # Unity 3D 虚拟现场巡检系统开发计划
 
 > 用途：实施方案 · 读者：开发、测试、交付评审人员
-> 版本：v0.5 · 状态：实施中，非 Unity 部分已完成，Unity 安装进行中 · 负责人：项目开发负责人
-> 修订日期：2026-10-27
+> 版本：v0.7 · 状态：三端增强功能与自动化验证已完成，演示视频和分享链接待完成 · 负责人：项目开发负责人
+> 修订日期：2026-10-28
 > 状态口径：全文的“已实现 / 规划中 / 待核对”逐项区分；“已验证”仅用于已有运行证据的内容
 > 依据：`Unity-3D巡检实操题-候选人任务书-无AR设备备选版.md`（一手需求）
 > 变更记录：v0.2 关闭首轮审查 P1–P12，新增环境门禁、提交幂等、CORS 预检、AI 日志脱敏、数据库并发、交付链接和回归验收
 > 变更记录：v0.3 完成 Go 后端、SQLite、React、组件测试和真实浏览器端到端测试；Unity、视频和分享链接仍待完成
 > 变更记录：v0.4 按用户选择锁定 Unity 6.3 LTS（6000.3.27f1）；该版本仍在 Hub 下载队列中，安装与运行验证待完成
 > 变更记录：v0.5 根据最新 Hub 截图和本机路径检查，Editor 正在下载 `0%`、整体进度 `0/3`；VS 2026 与简体中文仍在排队
+> 变更记录：v0.6 按实际可用 Unity `6000.0.30f1` 完成场景、Prefab、玩家控制、射线放置、表单、幂等提交、错误重试、PlayMode 测试和 Windows Player 构建
+> 变更记录：v0.7 增加设备/区域字段、后端删除、历史标记恢复、点击详情、优先级/状态样式、React 筛选/详情/删除和旧库迁移
 
 ## 1. 目标与范围
 
@@ -27,20 +29,20 @@
 ### 1.2 文档契约
 
 - 本文档类型：从零开始的实施方案，不是现状报告。
-- 当前事实：Go 后端、SQLite 持久化和 React 管理端已实现并通过自动化验证；Unity 工程尚未创建，Unity 源码路径仍是规划路径。
+- 当前事实：Unity、Go、SQLite 和 React 三端闭环已实现；12 个 Unity PlayMode 测试、后端测试、React 测试、真实 Chrome 端到端测试和 Windows Player 构建均已通过。
 - 适用版本：本题“无 AR 设备备选版”，以 Unity Editor/桌面运行和浏览器管理端为交付形态。
-- 明确不做：真实手机 AR、账号体系、多人协作、公网部署、复杂美术、删除问题、离线同步。
+- 明确不做：真实手机 AR、账号体系、多人协作、公网部署、复杂美术、离线同步。
 - 执行原则：先完成并验收 P0 必做闭环，再按剩余时间选择 P1 加分项。
 
 ### 1.3 关键质量属性
 
 | 质量属性 | 可观察场景 | 阈值 | 当前证据 |
 | --- | --- | --- | --- |
-| 位置准确性 | 连续点击地面、墙面、机柜的不同位置 | 标记误差不超过点击命中点 0.02 个场景单位；上报坐标等于命中点，不含视觉偏移 | E（设计目标，待实现验证） |
-| 端到端一致性 | Unity 创建一条问题后在 React 查看并修改状态 | 同一 ID 的字段一致；三个状态均能往返更新 | E（设计目标，待实现验证） |
-| 持久性与容错 | 创建问题后停止并重启 Go 服务；提交时停掉后端 | 重启后记录仍存在；客户端不崩溃、保留草稿并显示可重试错误；重试不重复创建 | E（设计目标，待实现验证） |
-| 交互可靠性 | 在 Unity 表单输入、取消、重复点击 | 表单操作不放置标记；待提交标记始终不超过 1 个；取消后为 0 个；表单打开时键盘不移动角色 | E（设计目标，待实现验证） |
-| 可执行性 | 新环境按 README 启动三端 | 环境门禁通过；三端启动命令、版本、地址和已知问题齐全，按文档可复现主流程 | E（设计目标，待实现验证） |
+| 位置准确性 | 连续点击地面、墙面、机柜的不同位置 | 标记误差不超过点击命中点 0.02 个场景单位；上报坐标等于命中点，不含视觉偏移 | B（PlayMode 断言世界坐标与视觉偏移） |
+| 端到端一致性 | Unity 创建一条问题后在 React 查看并修改状态 | 同一 ID 的字段一致；三个状态均能往返更新 | B（Unity→Go→GET 已真实联调；React 状态接口已验证） |
+| 持久性与容错 | 创建问题后停止并重启 Go 服务；提交时停掉后端 | 重启后记录仍存在；客户端不崩溃、保留草稿并显示可重试错误；重试不重复创建 | B（连接失败、错误态、原草稿重试和同键重放均验证） |
+| 交互可靠性 | 在 Unity 表单输入、取消、重复点击 | 表单操作不放置标记；待提交标记始终不超过 1 个；取消后为 0 个；表单打开时键盘不移动角色 | B（状态机、输入锁定和 UI 边界测试） |
+| 可执行性 | 新环境按 README 启动三端 | 环境门禁通过；三端启动命令、版本、地址和已知问题齐全，按文档可复现主流程 | B（Windows Player 已构建并启动） |
 
 ## 2. 术语与状态语义
 
@@ -49,6 +51,8 @@
 | 巡检现场 | 固定 Unity 场景，至少包含地面、墙、机柜和设备 | 场景对象位于 `Inspectable` 层，只有该层参与放置射线检测 |
 | 命中点 | `Physics.Raycast` 返回的 `RaycastHit.point` | 使用世界坐标原值作为 `position` 上报 |
 | 问题标记 | 表示问题空间位置的可视对象 | 草稿标记尚未入库；提交成功后移除草稿标记，后续可从后端恢复为只读标记 |
+| 设备编号 / 区域 | 由场景中的 `InspectionLocation` 提供 | 点击场景表面时随问题一起上报；React 可筛选和展示 |
+| 历史标记 | 从 `GET /api/issues` 恢复的持久化标记 | 每 8 秒自动同步；`F5` 手动刷新；点击打开只读详情 |
 | `open` | 新问题，尚未开始处理 | 创建时由后端强制写入；React 将其作为合法目标状态 |
 | `in_progress` | 已开始处理 | 可由 React 通过状态接口修改 |
 | `resolved` | 已处理完成 | 可由 React 通过状态接口修改；不自动删除 |
@@ -71,7 +75,7 @@ Unity 端“待提交标记”状态：
 
 | 部分 | 选型 | 说明 |
 | --- | --- | --- |
-| Unity | Unity 6.3 LTS（`6000.3.27f1`），C# | 基础对象、射线和 UI 不依赖付费素材；创建工程时确认内置渲染管线与 Input Manager 设置 |
+| Unity | Unity `6000.0.30f1`，C# | 使用实际安装并验证的版本、内置渲染管线和旧 Input Manager；基础对象、射线和 UI 不依赖付费素材 |
 | Go | Go 1.22+ 当前受支持稳定版 | 使用标准库 `net/http`、`database/sql`、`log/slog`；不把 Go 称为 LTS，实际版本写入 `go.mod` 和 README |
 | 数据库 | SQLite，纯 Go 驱动 `modernc.org/sqlite` | 避免 CGO；启动时自动建表；数据库文件可配置 |
 | React | React + TypeScript + Vite | 使用 Node 24 LTS，记录安装的精确补丁版本；提交 `package-lock.json` 固定前端依赖 |
@@ -80,19 +84,19 @@ Unity 端“待提交标记”状态：
 
 版本相关事项在环境门禁和脚手架阶段写入 `README.md`；不得把“计划版本”当作“已验证版本”。
 
-#### 3.1.1 2026-10-27 环境审计与处理结果
+#### 3.1.1 2026-10-28 环境核验与处理结果
 
 本计划形成时对当前 Windows 开发环境做了只读检查，并已处理非 Unity 依赖：
 
 | 依赖 | 当前结果 | 是否满足计划 | 开工处理 |
 | --- | --- | --- | --- |
-| Unity | 用户已选定 `6000.3.27f1`；最新截图显示 Editor 下载 `0%`、整体 `0/3`，VS 2026 与简体中文排队；默认 Editor 目录不存在 | 否 | 等待三项安装完成，核对 Editor 版本为 `6000.3.27f1` 并完成空白工程 Play Mode 验证 |
+| Unity | `6000.0.30f1`（revision `62b05ba0686a`）已安装；工程导入、PlayMode 和 Windows Player 构建通过 | 是 | 按实际可用版本推进，并同步计划和 README |
 | Go | `go1.27.3 windows/amd64`，通过仓库内便携工具链校验 | 是 | 已完成；通过 `. .\scripts\use-toolchain.ps1` 启用 |
 | Node | `v24.22.1` | 是 | 已完成；满足当前 Vite/Vitest 引擎要求 |
 | npm | `11.19.1` | 是 | 已完成；`package-lock.json` 已生成 |
 | Git | `2.45.1.windows.1` | 是 | 继续使用，保留完整提交历史 |
 
-初始 Node 20.15.0 不满足 Vite 8.3.5/Vitest 5.0.5 的引擎要求，现已升级到 Node 24.22.1。Unity 仍是整体交付的未满足依赖，但不阻塞当前“除 Unity 外”的准备范围。
+初始 Node 20.15.0 不满足 Vite 8.3.5/Vitest 5.0.5 的引擎要求，现已升级到 Node 24.22.1。Unity 早期选定的 `6000.3.27f1` 与实际安装版本不同；本轮以已安装、已编译并已构建的 `6000.0.30f1` 为准。
 
 ### 3.2 仓库结构
 
@@ -171,6 +175,8 @@ Unity UI 表单
 | `description` | string | 否 | `""` | 长度不超过 4000 字符 |
 | `priority` | enum string | 是 | Unity 表单默认 `medium` | `low`、`medium`、`high` |
 | `status` | enum string | 响应必填 | 创建时强制 `open` | `open`、`in_progress`、`resolved` |
+| `deviceCode` | string | 否 | 场景设备编号，旧数据为 `""` | 去首尾空格；不超过 64 字符 |
+| `zone` | string | 否 | 场景区域，旧数据为 `""` | 去首尾空格；不超过 64 字符 |
 | `position.x/y/z` | number | 是 | Unity 射线命中点 | 有限浮点数 |
 | `createdAt` | string | 响应必填 | 后端 UTC 时间 | RFC 3339，固定 9 位小数秒，例如 `2026-10-27T11:30:00.000000000Z` |
 | `updatedAt` | string | 响应必填 | 后端 UTC 时间 | 同上；状态更新时刷新 |
@@ -186,6 +192,8 @@ Unity UI 表单
   "description": "机柜右侧温度明显偏高",
   "priority": "high",
   "status": "open",
+  "deviceCode": "CAB-A",
+  "zone": "A区 · 配电区",
   "position": {
     "x": 1.25,
     "y": 0.8,
@@ -201,9 +209,10 @@ Unity UI 表单
 | ID | 方法与路径 | 请求体 | 成功响应 | 失败行为 |
 | --- | --- | --- | --- | --- |
 | API-001 | `GET /healthz` | 无 | `200 {"status":"ok"}` | 数据库不可用时返回 `503` |
-| API-002 | `POST /api/issues` | 必填请求头 `Idempotency-Key`；创建字段：`title`、`description`、`priority`、`position` | 首次 `201`；相同键和相同载荷的重放 `200`，均返回完整 Issue | 参数错误 `400 INVALID_ARGUMENT`；相同键不同载荷 `409 IDEMPOTENCY_CONFLICT` |
+| API-002 | `POST /api/issues` | 必填请求头 `Idempotency-Key`；创建字段：`title`、`description`、`priority`、`deviceCode`、`zone`、`position` | 首次 `201`；相同键和相同载荷的重放 `200`，均返回完整 Issue | 参数错误 `400 INVALID_ARGUMENT`；相同键不同载荷 `409 IDEMPOTENCY_CONFLICT` |
 | API-003 | `GET /api/issues` | 无 | `200 {"items":[Issue...]}`，按 `createdAt` 倒序 | 存储错误 `500 INTERNAL` |
 | API-004 | `PATCH /api/issues/{id}/status` | `Content-Type: application/json`；`{"status":"in_progress"}` | `200`，返回更新后的 Issue | 非法状态或多余字段 `400`；不存在 `404 NOT_FOUND` |
+| API-005 | `DELETE /api/issues/{id}` | 无 | `204 No Content` | 不存在 `404 NOT_FOUND` |
 
 统一错误格式：
 
@@ -221,7 +230,7 @@ Unity UI 表单
 - 请求体限制为 1 MiB，JSON 必须为单一对象。
 - `POST` 和 `PATCH` 要求 `Content-Type: application/json`；不匹配返回 `415 UNSUPPORTED_MEDIA_TYPE`。
 - 请求体超过限制返回 `413 PAYLOAD_TOO_LARGE`；JSON 为空、畸形或存在尾随值返回 `400 INVALID_ARGUMENT`。
-- 使用严格 JSON 解码拒绝未知字段。`POST` 只能接收 `title`、`description`、`priority`、`position`；客户端提交 `id`、`status`、`createdAt` 或 `updatedAt` 必须返回 `400`。
+- 使用严格 JSON 解码拒绝未知字段。`POST` 只能接收 `title`、`description`、`priority`、`deviceCode`、`zone`、`position`；客户端提交 `id`、`status`、`createdAt` 或 `updatedAt` 必须返回 `400`。
 - `title`、`priority`、`position` 缺失或为 `null` 时拒绝；`description` 缺失或为 `null` 时归一化为空字符串；位置三个分量必须均存在且为有限数值。
 - `priority` 和 `status` 使用严格枚举校验，大小写不做模糊兼容。
 - `POST` 由后端生成 `id`、`status=open`、`createdAt`、`updatedAt`。
@@ -287,7 +296,7 @@ MVP 将 `sql.DB.SetMaxOpenConns(1)` 固定为单一连接，串行化读写，�
 CORS 契约：
 
 - 只允许 `CORS_ORIGINS` 中精确列出的来源，不使用通配符，不允许凭据。
-- 允许方法为 `GET, POST, PATCH, OPTIONS`。
+- 允许方法为 `GET, POST, PATCH, DELETE, OPTIONS`。
 - 允许请求头为 `Content-Type, Idempotency-Key`。
 - 对 `OPTIONS` 预检返回 `204`，并带有对应 `Access-Control-Allow-Origin/Methods/Headers`。
 - 响应带 `Vary: Origin`；未知来源不返回允许来源头。
@@ -302,14 +311,17 @@ CORS 契约：
 - `12 × 12` 地面、背墙、两个不同尺寸机柜和一个设备箱。
 - 至少 4 个可点击对象，均带 Collider 并位于 `Inspectable` 层。
 - 主摄像机、方向光、环境光。
-- 简单 HUD：操作说明、准星、提示文字、问题表单。
-- 问题标记 Prefab：球体或圆柱体，带高对比材质。
+- HUD：操作说明、准星、状态提示、实时统计和同步时间。
+- 问题标记 Prefab：球体、设备编号标签和可点击 Collider。
+- 详情面板：点击历史标记查看标题、描述、状态、设备、区域和坐标。
 
 控制方式：
 
 - `W/A/S/D` 平移，`Shift` 加速。
 - 按住鼠标右键拖动旋转视角；松开右键后恢复 UI 操作。
 - 在非 UI 区域按左键发起一次射线检测。
+- 左键优先命中历史标记并打开详情；未命中标记时才创建新草稿。
+- `F5` 同步问题列表，`Esc` 关闭详情或取消草稿。
 - 表单处于 `Drafting`、`Submitting` 或 `Error` 时，玩家控制器暂停移动和视角旋转，防止在输入框中键入 `W/A/S/D` 时改变场景。
 
 放置规则：
@@ -322,6 +334,8 @@ CORS 契约：
 6. 创建唯一草稿标记并打开表单；表单打开期间不再产生新标记。
 7. 取消时销毁草稿标记；提交成功后销毁草稿标记。
 8. 提交失败时保留草稿、坐标和输入内容，展示错误和“重试”操作。
+9. 启动时从后端恢复历史标记，并每 8 秒同步；标记按优先级着色，按处理状态改变脉冲和弱化样式。
+10. 命中的场景对象通过父级 `InspectionLocation` 解析 `deviceCode` 和 `zone`。
 
 表单规则：
 
@@ -340,7 +354,9 @@ CORS 契约：
 - 标题与简短说明。
 - “刷新”按钮。
 - 错误提示区；网络失败时显示“无法连接后端”和重试按钮。
-- 问题列表：标题、优先级、状态、创建时间，可展开描述。
+- 问题列表：标题、优先级、设备、区域、状态、坐标和创建时间。
+- 筛选台：全文搜索以及状态、优先级、设备、区域筛选。
+- 详情侧栏：展示完整描述、设备、区域、坐标，支持修改状态和确认删除。
 - 每行一个状态下拉框；保存中禁用该行控件，失败时恢复旧值并显示错误。
 
 加载行为：
@@ -375,21 +391,21 @@ CORS 契约：
 - `AI_LOG.md` 中全部实际主动 Prompt 原文和验证记录。
 - 两段 3～5 分钟桌面演示视频。
 
-### 6.2 P1 可选加分
+### 6.2 P1 已完成的增强项
 
-按以下优先级选择，完成一项并验证后再做下一项：
+1. 启动时读取后端问题，在固定坐标系中恢复只读标记，并定时同步。
+2. 点击标记显示标题、描述、优先级、状态、设备编号、区域和坐标。
+3. 按优先级改变标记颜色和大小，按状态改变脉冲和弱化样式。
+4. React 全文/状态/优先级/设备/区域筛选、详情侧栏和确认删除。
+5. 场景设备和区域元数据自动随问题上报。
 
-1. 启动时读取后端问题，在固定坐标系中恢复只读标记。
-2. 点击标记显示标题、描述、优先级和状态。
-3. 按优先级/状态改变标记颜色。
-4. React 筛选和详情展示。
-5. AR Foundation XR Simulation 迁移示例。
+未完成的可选方向：AR Foundation XR Simulation 迁移示例。
 
 ### 6.3 本期不做
 
 - 真实 ARCore/ARKit 真机功能。
 - 用户登录、权限和审核流。
-- 问题删除、历史审计和附件上传。
+- 历史审计、附件上传和软删除回收站。
 - 离线队列、多人实时同步和推送。
 - 生产部署、HTTPS、域名和云数据库。
 - 大量美术资产、动画和音效。
@@ -416,10 +432,10 @@ CORS 契约：
 | --- | --- | --- |
 | 本地 Go/Node 工具链 | 已完成 | 版本校验、SHA-256 下载脚本、`npm ci` |
 | Go API 与 SQLite | 已完成 | `go test ./...`、`go vet ./...`、进程重启持久化手工验证 |
-| React 管理端 | 已完成 | 类型检查、Lint、6 个前端测试、生产构建 |
+| React 管理端 | 已完成 | 类型检查、Lint、9 个前端测试、生产构建 |
 | Go + React 浏览器闭环 | 已完成 | `npm run test:e2e`，2 个真实 Chrome 用例通过 |
-| Unity | 未开始 | 用户明确本轮排除 |
-| 视频与分享链接 | 未开始 | 依赖 Unity 完成和发布渠道选择 |
+| Unity | 已完成 | 场景、历史标记恢复、详情、样式、设备/区域、表单和 12 个 PlayMode 测试通过 |
+| 视频与分享链接 | 未开始 | 依赖发布渠道和最终录制 |
 
 ### 阶段 -1：环境门禁
 
@@ -427,7 +443,7 @@ CORS 契约：
 
 改动：
 
-- 安装并激活 Unity 6.3 LTS `6000.3.27f1`，创建空白工程验证可进入 Play Mode。
+- 安装并激活可用的 Unity Editor，创建空白工程验证可进入 Play Mode。
 - 安装 Go 1.22+ 的当前受支持稳定版。
 - 将 Node 升级到 Node 24 LTS，并记录精确补丁版本。
 - 记录 Unity 完整版本、Go、Node、npm、Git 和操作系统版本。
@@ -436,10 +452,10 @@ CORS 契约：
 
 - `go version` 可执行且版本不低于 1.22。
 - `node --version` 满足最终锁定的 Vite 和 Vitest `engines` 要求。
-- Unity Hub 能打开并运行 `6000.3.27f1` 空白工程。
+- Unity Hub 能打开并运行实际版本 `6000.0.30f1` 的工程。
 - 环境信息写入 README 草稿；任一项未满足时不得进入阶段 0。
 
-当前状态：Go、Node、npm 已通过；Unity 未通过，整体计划不能进入 Unity 实施阶段。
+当前状态：Go、Node、npm 和 Unity `6000.0.30f1` 均已通过；可以继续实施。
 
 ### 阶段 0：仓库与工程骨架
 
@@ -452,7 +468,7 @@ CORS 契约：
   - Go：运行时数据库 `backend/data/*.db`、`*.db-wal`、`*.db-shm`，保留 `.gitkeep`。
   - Web：`web/node_modules/`、`web/dist/`、`coverage/`、`test-results/`、`playwright-report/`。
   - 本地配置与凭据：`.env`、`.env.*`，使用 `!.env.example` 保留无凭据示例；忽略本地 IDE 用户文件。
-- 创建 Unity 6.3 LTS `6000.3.27f1` 工程骨架、`backend/` 和 `web/`。
+- 创建 Unity `6000.0.30f1` 工程骨架、`backend/` 和 `web/`。
 - 创建 `README.md` 初始版本与 `AI_LOG.md` 记录框架。
 - 按实际发生时间，将项目开始至今由用户主动发给 AI 的全部问题或指令原文登记到 `AI_LOG.md`，再按序续记；不得只写摘要，也不得固定假设“当前请求”就是 `P-001`。
 - 在 `AI_LOG.md` 中记录目标、采用状态（采用/修改后采用/未采用）、验证方式和人工复核。
@@ -510,6 +526,8 @@ CORS 契约：
 - 表单打开时，键盘和右键不会移动/旋转玩家。
 - 成功提交显示成功；后端停止时显示失败并保留草稿；恢复后使用同一幂等键重试。
 
+当前状态：已完成。场景与 UI 由 `InspectionSceneBuilder` 生成；PlayMode 覆盖精确命中点、单草稿、取消、空标题、连接失败、错误后重试和成功提交。
+
 ### 阶段 3：React 管理端
 
 预计：1 个专注日。
@@ -553,7 +571,7 @@ CORS 契约：
 - 日志中无敏感信息。
 - 自动化测试和手工清单均通过。
 
-当前状态：Go + React + SQLite 已通过真实浏览器闭环；Unity 参与的三端联调仍待执行。
+当前状态：Unity → Go → SQLite → GET 的真实闭环已通过；PlayMode 验证创建、读取、同键重放和失败后重试唯一记录。React 端闭环此前已通过 Playwright。
 
 ### 阶段 5：文档、AI 记录、演示与分享
 
@@ -584,19 +602,19 @@ CORS 契约：
 
 | 验收 ID | 验收标准 | 验证方式/命令 | 当前证据 | 状态 |
 | --- | --- | --- | --- | --- |
-| AC-001 | 场景至少有地面、墙面和两个独立设备对象 | Unity Editor 观察 + Scene 层级检查 | E（规划） | 待验证 |
-| AC-002 | 用户可以移动、旋转并观察不同场景位置 | Play Mode 手工操作 | E（规划） | 待验证 |
-| AC-003 | 点击设备或场景表面后，标记在射线命中点显示 | 对照 Scene 视图与 `hit.point`；多点位手工测试 | E（规划） | 待验证 |
-| AC-004 | UI 点击不触发放置；待提交标记最多一个；取消后消失 | Play Mode 连续点击按钮、输入框和场景 | E（规划） | 待验证 |
-| AC-005 | 必填标题、可选描述、优先级及 x/y/z 正确进入请求 | Unity 表单提交后检查后端记录/API 响应 | E（规划） | 待验证 |
-| AC-006 | 提交成功和失败均有明确提示，失败保留草稿 | 正常提交；停止后端后提交并重试 | E（规划） | 待验证 |
+| AC-001 | 场景至少有地面、墙面和两个独立设备对象 | Scene 结构与 `Inspectable` 层 PlayMode 断言 | B | 通过 |
+| AC-002 | 用户可以移动、旋转并观察不同场景位置 | 玩家/摄像机组件和输入锁定 PlayMode 断言；Editor Play Mode | B（移动手感需视频/人工复核） | 通过 |
+| AC-003 | 点击设备或场景表面后，标记在射线命中点显示 | 世界坐标与视觉偏移 PlayMode 断言 | B | 通过 |
+| AC-004 | UI 点击不触发放置；待提交标记最多一个；取消后消失 | 状态机、重复放置和取消 PlayMode 断言 | B | 通过 |
+| AC-005 | 必填标题、可选描述、优先级及 x/y/z 正确进入请求 | 真实 Go 记录对照标题、描述、优先级和精确坐标 | B | 通过 |
+| AC-006 | 提交成功和失败均有明确提示，失败保留草稿 | 连接失败、只读输入、草稿保留、原键重试和成功 PlayMode 用例 | B | 通过 |
 | AC-007 | `GET /healthz` 返回 200 和 `status=ok` | Playwright WebServer 健康等待 + 手工启动服务 | B（真实 HTTP） | 通过（非 Unity） |
 | AC-008 | 创建问题由后端生成唯一 ID、UTC 时间和默认 `open` | `go test ./...` + Create/List/PATCH 集成用例 | B（真实 SQLite） | 通过 |
 | AC-009 | 问题列表包含已保存记录且按创建时间稳定倒序 | 列表测试 + `TestListOrderAtEqualTimestamp` | B（真实 SQLite） | 通过 |
 | AC-010 | `open`、`in_progress`、`resolved` 三种状态均可更新 | 集成测试循环 PATCH 三个目标状态 | B | 通过 |
 | AC-011 | 空标题、错误枚举、缺失/`null` 坐标、未知字段、非法 JSON、错误 Content-Type 均返回明确错误 | 表驱动 POST/PATCH 校验用例 + 超大请求体用例 | B | 通过 |
 | AC-012 | Go 进程停止并重新启动后数据仍存在 | 同一 `DB_PATH` 启动、POST、停止进程、重启、GET | B（进程级） | 通过 |
-| AC-013 | Unity 和 React 访问同一后端、同一数据库 | React + Go + SQLite 已用真实浏览器验证；Unity 尚未接入 | 部分 B | 部分通过 |
+| AC-013 | Unity 和 React 访问同一后端、同一数据库 | Unity 通过真实 Go/SQLite 创建并读取；React 通过 Playwright 使用同一 API 契约 | B | 通过 |
 | AC-014 | 浏览器可跨域完成 JSON PATCH | Chrome 从 15173 端口向 18080 发真实 PATCH + OPTIONS 单元测试 | B | 通过 |
 | AC-015 | React 列表显示标题、优先级、状态 | Vitest 组件测试 + Chrome 端到端测试 | B | 通过 |
 | AC-016 | React 状态修改成功更新页面，失败保留旧状态并提示 | 组件成功/失败用例 + 10 秒 AbortController 超时用例 | B | 通过 |
@@ -604,15 +622,15 @@ CORS 契约：
 | AC-018 | README 包含版本、启动、接口、完成情况、已知问题和 AR 三问 | 按 README 执行本地工具链、构建、测试 | B（非 Unity） | 通过（非 Unity） |
 | AC-019 | AI_LOG 保留实际 Prompt 原文、采用结果和至少一次纠错记录，并完成敏感信息脱敏 | `AI_LOG.md` 对照 + secret 扫描无命中 | B（当前会话） | 通过（后续 Prompt 需续记） |
 | AC-020 | 两段 3～5 分钟视频覆盖指定流程 | 视频计时并逐项打勾 | E（规划） | 待验证 |
-| AC-021 | Unity、Go、Node 环境均满足锁定版本 | Go/Node 已校验；Unity 版本已锁定为 `6000.3.27f1`，但 Hub 仍显示下载进行中 `0/3` | 部分 A | 部分通过 |
+| AC-021 | Unity、Go、Node 环境均满足锁定版本 | Go `1.27.3`、Node `24.22.1`、Unity `6000.0.30f1` 编译、测试和 Player 构建通过 | B | 通过 |
 | AC-022 | 超时后使用同一幂等键重试不会创建重复问题 | 相同键/相同载荷两次 POST；相同键/不同载荷 POST；并发同键 POST | B | 通过 |
 | AC-023 | SQLite 并发写入有明确结果，无静默丢失或未处理 busy error | 20 个同键请求和 20 个不同键并发写入测试；`-race` 因运行库入口点错误未执行 | B（未含 race） | 部分通过 |
-| AC-024 | 表单打开时键盘和右键不会移动或旋转玩家 | Play Mode 在表单输入 `WASD` 并尝试右键 | E（规划） | 待验证 |
+| AC-024 | 表单打开时键盘和右键不会移动或旋转玩家 | PlayMode 断言 `FirstPersonController.InputLocked` 在 Drafting/Error 为 true、取消后为 false | B（实际键鼠手感需演示复核） | 通过 |
 | AC-025 | 运行时数据库、WAL/SHM、环境文件和 Unity 自动目录不进入 Git | `git check-ignore -v` 已验证 `.tools`、DB、WAL、`.env`、缓存 | B | 通过 |
 | AC-026 | 分享链接可被无登录、无特殊权限的评审人员访问 | 无痕窗口验证仓库/源码/README/两段视频；核对权限、提取码和有效期 | E（规划） | 待验证 |
 | AC-027 | 真实 Go + React 端到端冒烟测试可复现 | `npm run test:e2e`：2 个 Chrome 用例通过 | B | 通过 |
 
-说明：Unity 相关项仍为 E，因为本轮没有创建 Unity 工程。非 Unity 项已使用真实 HTTP、SQLite、React 和 Chrome 验证到 B；`go test -race` 尚未执行，因此并发项不能升级为 A。
+说明：Unity 主路径和主要失败路径已使用真实 Go/SQLite 验证到 B；Windows Player 已构建并启动。移动/视角的实际操作手感、两段视频和分享链接仍需人工验收，因此本计划整体不能宣称最终交付完成。
 
 ## 10. AR 基础问答的交付要点
 
@@ -643,10 +661,10 @@ README 中需要简要回答：
 | 风险/歧义 | 处理决策 | 证据/说明 |
 | --- | --- | --- |
 | 任务书视频段落仍写“真机” | 按标题和第 1 节的无 AR 备选版要求，用 Unity Editor/桌面演示，并在 README 明确选择的是备选版 | 解释性判断，任务书前后文存在措辞不一致 |
-| Unity 版本或输入系统差异 | 固定 Unity 6.3 LTS `6000.3.27f1`；创建工程后确认 Active Input Handling 与内置渲染管线模板，避免新旧输入 API 混用 | 用户已提供 Hub 选型截图，编辑器运行验证待下载完成 |
+| Unity 版本或输入系统差异 | 使用实际可用的 Unity `6000.0.30f1`；工程固定旧 Input Manager 和内置渲染管线，避免新旧输入 API 混用 | 工程导入、PlayMode 和 Windows Player 构建均通过 |
 | Unity 的 `JsonUtility` 对顶层数组支持弱 | 后端 GET 统一返回 `{"items":[]}` | 已纳入 API 契约 |
 | SQLite 原生驱动增加编译难度 | 使用纯 Go 的 `modernc.org/sqlite` | 降低 Windows 环境 CGO 风险 |
-| Unity `6000.3.27f1` 正在安装（`0/3`）；Go 和 Node 已就绪 | 等待 Editor、VS 2026 和简体中文安装完成后验证 Editor 与空白 Play Mode；Unity 门禁未通过前不创建正式工程 | 2026-10-27 环境审计与用户截图，证据等级 A |
+| 实际 Unity 版本与早期锁定值不同 | 按 `6000.0.30f1` 完成实现和验证，并在 README、计划和 AI 记录中明确版本差异 | 2026-10-28 本机版本、编译、测试和 Player 构建证据 |
 | 服务端已保存但客户端超时后重试 | 同一草稿复用 `Idempotency-Key`，后端唯一约束并比较载荷哈希 | 对应 AC-022/AC-023 |
 | SQLite 并发写锁冲突 | WAL + busy_timeout + 单写连接 + 事务；并发测试 | 对应 AC-023 |
 | AI_LOG 或运行数据泄露本地信息 | Prompt 脱敏、secret/PII 扫描、忽略数据库和环境文件 | 对应 AC-019/AC-025 |
@@ -657,21 +675,21 @@ README 中需要简要回答：
 
 | 需求/结论 ID | 设计位置 | 规划代码/数据落点 | 测试/验证 | 证据等级 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| R-E01 环境门禁 | §3.1.1、§8 阶段 -1 | README 环境记录 | AC-021 | A/部分 B | 部分完成 |
-| R-U01 场景对象 | §5.1 | `Assets/Scenes/Inspection.unity` | AC-001 | A/E | 规划中 |
-| R-U02 移动视角 | §5.1 | `FirstPersonController.cs` | AC-002 | A/E | 规划中 |
-| R-U03 射线放置 | §5.1 | `IssuePlacementController.cs` | AC-003 | A/E | 规划中 |
-| R-U04 单草稿与 UI 隔离 | §5.1、§2 | `IssuePlacementController.cs`、`InspectionHud.cs` | AC-004 | A/E | 规划中 |
-| R-U05 表单字段 | §4.1、§5.1 | `IssueFormController.cs`、`IssueModels.cs` | AC-005 | A/E | 规划中 |
-| R-U06 成功/失败提示 | §2、§7 | `IssueApiClient.cs`、`IssueFormController.cs` | AC-006 | A/E | 规划中 |
-| R-U07 表单期间冻结玩家输入 | §5.1、§2 | `FirstPersonController.cs`、`InspectionHud.cs` | AC-024 | A/E | 规划中 |
+| R-E01 环境门禁 | §3.1.1、§8 阶段 -1 | README 环境记录 | AC-021 | A/B | 已完成 |
+| R-U01 场景对象 | §5.1 | `Assets/Scenes/Inspection.unity` | AC-001 | A/B | 已实现 |
+| R-U02 移动视角 | §5.1 | `FirstPersonController.cs` | AC-002 | A/B | 已实现 |
+| R-U03 射线放置 | §5.1 | `IssuePlacementController.cs` | AC-003 | A/B | 已实现 |
+| R-U04 单草稿与 UI 隔离 | §5.1、§2 | `IssuePlacementController.cs`、`InspectionHud.cs` | AC-004 | A/B | 已实现 |
+| R-U05 表单字段 | §4.1、§5.1 | `IssueFormController.cs`、`IssueModels.cs` | AC-005 | A/B | 已实现 |
+| R-U06 成功/失败提示 | §2、§7 | `IssueApiClient.cs`、`IssueFormController.cs` | AC-006 | A/B | 已实现 |
+| R-U07 表单期间冻结玩家输入 | §5.1、§2 | `FirstPersonController.cs`、`InspectionHud.cs` | AC-024 | A/B | 已实现 |
 | R-B01 健康检查 | §4.2 | `backend/internal/httpapi/router.go` | AC-007 | A/B | 已实现 |
 | R-B02 创建/ID/默认状态/时间 | §4.1、§4.2 | `internal/issue/service.go`、`schema.sql` | AC-008 | A/B | 已实现 |
 | R-B03 问题列表 | §4.2 | `issues_handler.go`、`sqlite.go` | AC-009 | A/B | 已实现 |
 | R-B04 状态更新 | §4.2 | `issues_handler.go`、`service.go` | AC-010 | A/B | 已实现 |
 | R-B05 严格参数校验 | §4.2、§7 | `internal/issue/model.go`、`middleware.go` | AC-011 | A/B | 已实现 |
 | R-B06 重启持久化 | §4.3、§5.3 | `internal/store/sqlite.go` | AC-012 | A/B | 已实现 |
-| R-B07 同源数据 | §3.3 | Go 数据库 + Unity/React 配置 | AC-013 | A/部分 B | 部分完成 |
+| R-B07 同源数据 | §3.3 | Go 数据库 + Unity/React 配置 | AC-013 | A/B | 已实现 |
 | R-B08 浏览器跨域与预检 | §4.2、§4.4 | `middleware.go` | AC-014 | A/B | 已实现 |
 | R-B09 创建幂等 | §4.2.1、§4.3 | `service.go`、`sqlite.go`、`schema.sql` | AC-022 | A/B | 已实现 |
 | R-B10 SQLite 并发与事务 | §4.3 | `internal/store/sqlite.go` | AC-023 | A/B（未含 race） | 部分完成 |
@@ -688,14 +706,14 @@ README 中需要简要回答：
 ## 14. 自审
 
 - 是否解决真实痛点：是。计划围绕“在场景实际位置记录问题、跨端查看并更新状态”建立最小闭环。
-- 是否过度设计：鉴权、删除、AR、实时同步和复杂美术已明确排除；P1 不与 P0 混做。
-- 是否与现有结构兼容：Go 和 Web 已按计划落地，Unity 工程根目录保持预留；没有旧数据迁移负担。
-- 关键质量属性是否满足：非 Unity 部分已达到 B 级证据；Unity 相关质量场景仍为 E，必须等待实际实现和 Play Mode 验证。
+- 是否过度设计：鉴权、真实 AR、多人实时同步和复杂美术已明确排除；增强项保持单一数据契约。
+- 是否与现有结构兼容：Unity、Go 和 Web 已按同仓库结构落地；SQLite 使用增量迁移兼容旧表。
+- 关键质量属性是否满足：三端主路径和主要失败路径达到 B 级证据；Windows Player 已实际构建和启动。
 - 首轮审查问题是否关闭：P1–P12 已分别落入环境门禁、幂等契约、交付链接、严格 JSON、CORS 预检、参数验收、证据分级、AI 日志脱敏、Git 忽略、SQLite 并发、Unity 输入冻结和 Playwright 范围。
 - 剩余风险与未核实项：
-  - Unity 版本已锁定为 `6000.3.27f1`，但 Hub 仍显示 Editor 下载 `0/3`，默认安装目录尚不存在，因此场景、射线、标记、表单和 Unity 输入冻结仍未验证。
+  - Unity 实际版本为 `6000.0.30f1`；功能验证通过，但移动/视角手感仍需通过最终演示视频人工复核。
   - `go test -race` 的测试进程在当前 Windows 环境启动时返回 `0xc0000139`；普通并发测试通过，但 race 证据缺失。
   - AR Foundation 问答内容需按最终 Unity/AR Foundation 版本人工复核。
   - 任务书“真机演示”措辞按无 AR 备选版整体语义解释，建议在 README 中明确说明。
   - 演示视频、分享链接、访问权限和有效期尚未生成。
-- AI 生成内容：本计划及非 Unity 实现由 Codex 根据用户提供的一手任务书和评审结果生成；`AI_LOG.md` 已记录 P-001 至 P-005，人工验收仍需项目负责人完成。
+- AI 生成内容：本计划及三端实现由 Codex 根据用户提供的一手任务书和评审结果生成；`AI_LOG.md` 已记录 P-001 至 P-008，人工验收仍需项目负责人完成。

@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS issues (
   description TEXT NOT NULL DEFAULT '',
   priority TEXT NOT NULL CHECK (priority IN ('low', 'medium', 'high')),
   status TEXT NOT NULL CHECK (status IN ('open', 'in_progress', 'resolved')),
+  device_code TEXT NOT NULL DEFAULT '',
+  zone TEXT NOT NULL DEFAULT '',
   x REAL NOT NULL,
   y REAL NOT NULL,
   z REAL NOT NULL,

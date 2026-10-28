@@ -21,7 +21,7 @@ func (a *API) withCORS(allowedOrigins []string, next http.Handler) http.Handler 
 		_, originAllowed := allowed[origin]
 		if origin != "" && originAllowed {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Idempotency-Key")
 			w.Header().Set("Access-Control-Max-Age", "600")
 		}

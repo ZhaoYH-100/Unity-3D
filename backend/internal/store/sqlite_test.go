@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -187,6 +188,53 @@ func TestListOrderAtEqualTimestamp(t *testing.T) {
 	}
 	if len(items) != 2 || items[0].ID != rows[1].id || items[1].ID != rows[0].id {
 		t.Fatalf("unexpected equal-timestamp order: %#v", items)
+	}
+}
+
+func TestOpenMigratesLegacyIssueTable(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "legacy.db")
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("open legacy database: %v", err)
+	}
+	_, err = db.ExecContext(ctx, `
+		CREATE TABLE issues (
+			id TEXT PRIMARY KEY,
+			title TEXT NOT NULL,
+			description TEXT NOT NULL DEFAULT '',
+			priority TEXT NOT NULL,
+			status TEXT NOT NULL,
+			x REAL NOT NULL,
+			y REAL NOT NULL,
+			z REAL NOT NULL,
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL,
+			request_key TEXT NOT NULL UNIQUE,
+			request_hash TEXT NOT NULL
+		)`)
+	if err != nil {
+		_ = db.Close()
+		t.Fatalf("create legacy table: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close legacy database: %v", err)
+	}
+
+	repository, err := Open(ctx, dbPath)
+	if err != nil {
+		t.Fatalf("open migrated store: %v", err)
+	}
+	t.Cleanup(func() { _ = repository.Close() })
+
+	items, err := repository.List(ctx)
+	if err != nil {
+		t.Fatalf("list migrated issues: %v", err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("expected no legacy rows, got %#v", items)
 	}
 }
 

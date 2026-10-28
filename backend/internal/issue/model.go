@@ -46,6 +46,8 @@ type Issue struct {
 	Description string   `json:"description"`
 	Priority    Priority `json:"priority"`
 	Status      Status   `json:"status"`
+	DeviceCode  string   `json:"deviceCode"`
+	Zone        string   `json:"zone"`
 	Position    Position `json:"position"`
 	CreatedAt   string   `json:"createdAt"`
 	UpdatedAt   string   `json:"updatedAt"`
@@ -61,6 +63,8 @@ type CreateInput struct {
 	Title       *string        `json:"title"`
 	Description *string        `json:"description"`
 	Priority    *string        `json:"priority"`
+	DeviceCode  *string        `json:"deviceCode"`
+	Zone        *string        `json:"zone"`
 	Position    *PositionInput `json:"position"`
 }
 
@@ -68,6 +72,8 @@ type NormalizedCreate struct {
 	Title       string
 	Description string
 	Priority    Priority
+	DeviceCode  string
+	Zone        string
 	Position    Position
 }
 
@@ -114,6 +120,15 @@ func NormalizeCreate(input CreateInput) (NormalizedCreate, error) {
 		return NormalizedCreate{}, &ValidationError{Field: "priority", Message: "priority must be low, medium, or high"}
 	}
 
+	deviceCode, err := normalizeOptionalLabel(input.DeviceCode, "deviceCode", 64)
+	if err != nil {
+		return NormalizedCreate{}, err
+	}
+	zone, err := normalizeOptionalLabel(input.Zone, "zone", 64)
+	if err != nil {
+		return NormalizedCreate{}, err
+	}
+
 	if input.Position == nil {
 		return NormalizedCreate{}, &ValidationError{Field: "position", Message: "position is required"}
 	}
@@ -130,8 +145,25 @@ func NormalizeCreate(input CreateInput) (NormalizedCreate, error) {
 		Title:       title,
 		Description: description,
 		Priority:    priority,
+		DeviceCode:  deviceCode,
+		Zone:        zone,
 		Position:    position,
 	}, nil
+}
+
+func normalizeOptionalLabel(value *string, field string, maxLength int) (string, error) {
+	if value == nil {
+		return "", nil
+	}
+
+	normalized := strings.TrimSpace(*value)
+	if utf8.RuneCountInString(normalized) > maxLength {
+		return "", &ValidationError{
+			Field:   field,
+			Message: fmt.Sprintf("%s must be at most %d characters", field, maxLength),
+		}
+	}
+	return normalized, nil
 }
 
 func NormalizeIdempotencyKey(value string) (string, error) {

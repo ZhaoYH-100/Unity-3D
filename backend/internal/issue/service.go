@@ -17,6 +17,7 @@ type Store interface {
 	CreateOrGet(ctx context.Context, item Issue, requestKey, requestHash string) (Issue, bool, error)
 	List(ctx context.Context) ([]Issue, error)
 	UpdateStatus(ctx context.Context, id string, status Status, updatedAt string) (Issue, error)
+	Delete(ctx context.Context, id string) error
 }
 
 type Service struct {
@@ -51,6 +52,8 @@ func (s *Service) Create(ctx context.Context, rawKey string, input CreateInput) 
 		Description: normalized.Description,
 		Priority:    normalized.Priority,
 		Status:      StatusOpen,
+		DeviceCode:  normalized.DeviceCode,
+		Zone:        normalized.Zone,
 		Position:    normalized.Position,
 		CreatedAt:   now,
 		UpdatedAt:   now,
@@ -73,6 +76,13 @@ func (s *Service) UpdateStatus(ctx context.Context, id, rawStatus string) (Issue
 	return s.store.UpdateStatus(ctx, id, status, now)
 }
 
+func (s *Service) Delete(ctx context.Context, id string) error {
+	if id == "" {
+		return ErrNotFound
+	}
+	return s.store.Delete(ctx, id)
+}
+
 func (s *Service) Health(ctx context.Context) error {
 	return s.store.Ping(ctx)
 }
@@ -82,11 +92,15 @@ func hashCreate(input NormalizedCreate) string {
 		Title       string   `json:"title"`
 		Description string   `json:"description"`
 		Priority    Priority `json:"priority"`
+		DeviceCode  string   `json:"deviceCode"`
+		Zone        string   `json:"zone"`
 		Position    Position `json:"position"`
 	}{
 		Title:       input.Title,
 		Description: input.Description,
 		Priority:    input.Priority,
+		DeviceCode:  input.DeviceCode,
+		Zone:        input.Zone,
 		Position:    input.Position,
 	}
 

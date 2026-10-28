@@ -71,8 +71,58 @@ func Open(ctx context.Context, path string) (*SQLiteStore, error) {
 	if _, err := db.ExecContext(ctx, schemaSQL); err != nil {
 		return closeOnError(fmt.Errorf("initialize sqlite schema: %w", err))
 	}
+	if err := ensureIssueColumns(ctx, db); err != nil {
+		return closeOnError(err)
+	}
 
 	return store, nil
+}
+
+func ensureIssueColumns(ctx context.Context, db *sql.DB) error {
+	rows, err := db.QueryContext(ctx, "PRAGMA table_info(issues)")
+	if err != nil {
+		return fmt.Errorf("inspect issue schema: %w", err)
+	}
+
+	columns := map[string]struct{}{}
+	for rows.Next() {
+		var (
+			columnID     int
+			name         string
+			columnType   string
+			notNull      int
+			defaultValue any
+			primaryKey   int
+		)
+		if err := rows.Scan(&columnID, &name, &columnType, &notNull, &defaultValue, &primaryKey); err != nil {
+			_ = rows.Close()
+			return fmt.Errorf("scan issue schema: %w", err)
+		}
+		columns[name] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return fmt.Errorf("iterate issue schema: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("close issue schema rows: %w", err)
+	}
+
+	for _, column := range []struct {
+		name string
+		sql  string
+	}{
+		{name: "device_code", sql: "ALTER TABLE issues ADD COLUMN device_code TEXT NOT NULL DEFAULT ''"},
+		{name: "zone", sql: "ALTER TABLE issues ADD COLUMN zone TEXT NOT NULL DEFAULT ''"},
+	} {
+		if _, exists := columns[column.name]; exists {
+			continue
+		}
+		if _, err := db.ExecContext(ctx, column.sql); err != nil {
+			return fmt.Errorf("migrate issue column %s: %w", column.name, err)
+		}
+	}
+	return nil
 }
 
 func (s *SQLiteStore) Close() error {
@@ -113,13 +163,15 @@ func (s *SQLiteStore) CreateOrGet(
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO issues (
 			id, title, description, priority, status,
-			x, y, z, created_at, updated_at, request_key, request_hash
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			device_code, zone, x, y, z, created_at, updated_at, request_key, request_hash
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		item.ID,
 		item.Title,
 		item.Description,
 		string(item.Priority),
 		string(item.Status),
+		item.DeviceCode,
+		item.Zone,
 		item.Position.X,
 		item.Position.Y,
 		item.Position.Z,
@@ -141,7 +193,7 @@ func (s *SQLiteStore) CreateOrGet(
 func (s *SQLiteStore) List(ctx context.Context) ([]issue.Issue, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, title, description, priority, status,
-		       x, y, z, created_at, updated_at
+		       device_code, zone, x, y, z, created_at, updated_at
 		FROM issues
 		ORDER BY created_at DESC, id DESC`)
 	if err != nil {
@@ -202,6 +254,22 @@ func (s *SQLiteStore) UpdateStatus(
 	return item, nil
 }
 
+func (s *SQLiteStore) Delete(ctx context.Context, id string) error {
+	result, err := s.db.ExecContext(ctx, "DELETE FROM issues WHERE id = ?", id)
+	if err != nil {
+		return fmt.Errorf("delete issue: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("read delete result: %w", err)
+	}
+	if affected == 0 {
+		return issue.ErrNotFound
+	}
+	return nil
+}
+
 type scanner interface {
 	Scan(dest ...any) error
 }
@@ -216,6 +284,8 @@ func scanIssue(row scanner) (issue.Issue, error) {
 		&item.Description,
 		&priority,
 		&status,
+		&item.DeviceCode,
+		&item.Zone,
 		&item.Position.X,
 		&item.Position.Y,
 		&item.Position.Z,
@@ -234,7 +304,7 @@ func getByRequestKey(
 ) (issue.Issue, string, error) {
 	row := tx.QueryRowContext(ctx, `
 		SELECT id, title, description, priority, status,
-		       x, y, z, created_at, updated_at, request_hash
+		       device_code, zone, x, y, z, created_at, updated_at, request_hash
 		FROM issues WHERE request_key = ?`, requestKey)
 	var item issue.Issue
 	var priority string
@@ -246,6 +316,8 @@ func getByRequestKey(
 		&item.Description,
 		&priority,
 		&status,
+		&item.DeviceCode,
+		&item.Zone,
 		&item.Position.X,
 		&item.Position.Y,
 		&item.Position.Z,
@@ -265,7 +337,7 @@ func getByID(
 ) (issue.Issue, error) {
 	row := tx.QueryRowContext(ctx, `
 		SELECT id, title, description, priority, status,
-		       x, y, z, created_at, updated_at
+		       device_code, zone, x, y, z, created_at, updated_at
 		FROM issues WHERE id = ?`, id)
 	return scanIssue(row)
 }

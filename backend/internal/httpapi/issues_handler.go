@@ -75,6 +75,14 @@ func (a *API) updateIssueStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, item)
 }
 
+func (a *API) deleteIssue(w http.ResponseWriter, r *http.Request) {
+	if err := a.service.Delete(r.Context(), r.PathValue("id")); err != nil {
+		a.writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (a *API) writeServiceError(w http.ResponseWriter, err error) {
 	var validationError *issue.ValidationError
 	switch {

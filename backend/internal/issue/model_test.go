@@ -2,6 +2,7 @@ package issue
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -11,12 +12,16 @@ func TestNormalizeCreate(t *testing.T) {
 	title := "  temperature warning  "
 	description := ""
 	priority := "high"
+	deviceCode := "  CAB-A  "
+	zone := "A区 · 配电区"
 	x, y, z := 1.25, 0.8, 2.4
 
 	normalized, err := NormalizeCreate(CreateInput{
 		Title:       &title,
 		Description: &description,
 		Priority:    &priority,
+		DeviceCode:  &deviceCode,
+		Zone:        &zone,
 		Position: &PositionInput{
 			X: &x,
 			Y: &y,
@@ -32,6 +37,9 @@ func TestNormalizeCreate(t *testing.T) {
 	if normalized.Priority != PriorityHigh {
 		t.Fatalf("unexpected priority %q", normalized.Priority)
 	}
+	if normalized.DeviceCode != "CAB-A" || normalized.Zone != zone {
+		t.Fatalf("unexpected location metadata: %#v", normalized)
+	}
 }
 
 func TestNormalizeCreateRejectsInvalidInput(t *testing.T) {
@@ -41,6 +49,7 @@ func TestNormalizeCreateRejectsInvalidInput(t *testing.T) {
 	space := "   "
 	validPriority := "medium"
 	badPriority := "urgent"
+	longDeviceCode := "device-" + strings.Repeat("x", 64)
 	x := 1.0
 	incompletePosition := PositionInput{X: &x}
 
@@ -67,6 +76,20 @@ func TestNormalizeCreateRejectsInvalidInput(t *testing.T) {
 			input: CreateInput{
 				Title:    &validTitle,
 				Priority: &badPriority,
+			},
+			wantErr: true,
+		},
+		{
+			name: "device code too long",
+			input: CreateInput{
+				Title:      &validTitle,
+				Priority:   &validPriority,
+				DeviceCode: &longDeviceCode,
+				Position: &PositionInput{
+					X: &x,
+					Y: &x,
+					Z: &x,
+				},
 			},
 			wantErr: true,
 		},

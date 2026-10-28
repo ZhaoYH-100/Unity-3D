@@ -48,6 +48,9 @@ func TestIssueWorkflow(t *testing.T) {
 	if created.Priority != issue.PriorityHigh {
 		t.Fatalf("expected high priority, got %s", created.Priority)
 	}
+	if created.DeviceCode != "CAB-A" || created.Zone != "配电区" {
+		t.Fatalf("unexpected location metadata: %#v", created)
+	}
 
 	listResponse := performRequest(t, handler, http.MethodGet, "/api/issues", "", nil, "")
 	if listResponse.Code != http.StatusOK {
@@ -83,6 +86,32 @@ func TestIssueWorkflow(t *testing.T) {
 		if updated.Status != status {
 			t.Fatalf("expected %s, got %s", status, updated.Status)
 		}
+	}
+
+	deleteResponse := performRequest(
+		t,
+		handler,
+		http.MethodDelete,
+		"/api/issues/"+created.ID,
+		"",
+		nil,
+		"",
+	)
+	if deleteResponse.Code != http.StatusNoContent {
+		t.Fatalf("delete status = %d, body = %s", deleteResponse.Code, deleteResponse.Body.String())
+	}
+
+	missingResponse := performRequest(
+		t,
+		handler,
+		http.MethodDelete,
+		"/api/issues/"+created.ID,
+		"",
+		nil,
+		"",
+	)
+	if missingResponse.Code != http.StatusNotFound {
+		t.Fatalf("second delete status = %d, body = %s", missingResponse.Code, missingResponse.Body.String())
 	}
 }
 
@@ -322,7 +351,8 @@ func TestCORSPreflight(t *testing.T) {
 	if got := response.Header().Get("Access-Control-Allow-Origin"); got != allowedOrigin {
 		t.Fatalf("allow origin = %q", got)
 	}
-	if got := response.Header().Get("Access-Control-Allow-Methods"); !strings.Contains(got, "PATCH") {
+	if got := response.Header().Get("Access-Control-Allow-Methods"); !strings.Contains(got, "PATCH") ||
+		!strings.Contains(got, "DELETE") {
 		t.Fatalf("allow methods = %q", got)
 	}
 	if got := response.Header().Get("Access-Control-Allow-Headers"); !strings.Contains(got, "Idempotency-Key") {
@@ -471,7 +501,7 @@ func decodeResponse(t *testing.T, response *httptest.ResponseRecorder, destinati
 
 func createPayload(title, priority string, x, y, z float64) []byte {
 	return []byte(fmt.Sprintf(
-		`{"title":%q,"description":"test issue","priority":%q,"position":{"x":%v,"y":%v,"z":%v}}`,
+		`{"title":%q,"description":"test issue","priority":%q,"deviceCode":"CAB-A","zone":"配电区","position":{"x":%v,"y":%v,"z":%v}}`,
 		title,
 		priority,
 		x,
