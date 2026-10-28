@@ -1,0 +1,37 @@
+{
+  "byDomain": {
+    "project": 1
+  },
+  "byStatus": {
+    "draft": 1
+  },
+  "byType": {
+    "plan": 1
+  },
+  "entries": [
+    {
+      "domain": "project",
+      "id": "DOC-20261027-001",
+      "owner": "项目开发负责人",
+      "path": "entries/project/DOC-20261027-001/primary.md",
+      "revision": 3,
+      "status": "draft",
+      "summary": "Unity、Go、React 三端巡检闭环的实施方案、数据契约、实施阶段与验收标准",
+      "supersededBy": null,
+      "supersedes": null,
+      "tags": [
+        "unity-3d",
+        "inspection",
+        "plan",
+        "project"
+      ],
+      "title": "Unity 3D 虚拟现场巡检系统开发计划",
+      "type": "plan",
+      "updatedAt": "2026-10-28T20:23:53+08:00",
+      "version": "0.2"
+    }
+  ],
+  "entryCount": 1,
+  "latestUpdate": "2026-10-28T20:23:53+08:00",
+  "schemaVersion": 1
+}

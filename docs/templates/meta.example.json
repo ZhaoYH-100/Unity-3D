@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "DOC-YYYYMMDD-NNN",
+  "title": "文档标题",
+  "type": "design",
+  "domain": "general",
+  "status": "draft",
+  "version": "0.1",
+  "revision": 1,
+  "owner": "负责人",
+  "createdAt": "YYYY-MM-DDTHH:MM:SS+08:00",
+  "updatedAt": "YYYY-MM-DDTHH:MM:SS+08:00",
+  "summary": "一句话摘要",
+  "tags": [
+    "tag"
+  ],
+  "primaryFile": "primary.md",
+  "file": {
+    "path": "primary.md",
+    "sha256": "64位小写SHA-256",
+    "sizeBytes": 0,
+    "mediaType": "text/markdown"
+  },
+  "provenance": {
+    "origin": "ai",
+    "generator": "工具名称",
+    "modelVersion": "模型版本或not-recorded",
+    "promptRef": "Prompt或会话编号",
+    "sourceRefs": [],
+    "humanReview": "pending",
+    "reviewNotes": ""
+  },
+  "related": [],
+  "supersedes": null,
+  "supersededBy": null,
+  "versions": [],
+  "history": [
+    {
+      "at": "YYYY-MM-DDTHH:MM:SS+08:00",
+      "action": "imported",
+      "actor": "负责人",
+      "fromStatus": null,
+      "toStatus": "draft",
+      "note": "首次入库"
+    }
+  ]
+}
